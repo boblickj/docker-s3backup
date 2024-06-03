@@ -11,11 +11,9 @@ S3PATH=${S3PATH:?"S3_PATH required"}
 CRON_SCHEDULE=${CRON_SCHEDULE:-0 * * * *}
 S3CMDPARAMS=${S3CMDPARAMS}
 
+S3CFGFILE="/root/.s3cfg"
 LOCKFILE="/tmp/s3cmd.lock"
 LOG="/var/log/cron.log"
-
-echo "access_key=$ACCESS_KEY" >> /root/.s3cfg
-echo "secret_key=$SECRET_KEY" >> /root/.s3cfg
 
 trap "rm -f $LOCKFILE" EXIT
 
@@ -24,20 +22,28 @@ if [ ! -e $LOG ]; then
 fi
 
 if [[ $OPTION = "start" ]]; then
-  CRONFILE="/etc/cron.d/s3backup"
-  CRONENV=""
+
+  if [ ! -e $S3CFGFILE ]; then
+    echo "Configuring S3CMD"
+    echo -e "${ACCESS_KEY}\n${SECRET_KEY}\n\n\n\n\n\n\n\nn\ny\n" | \
+      /usr/bin/s3cmd --configure
+  fi
 
   echo "Found the following files and directores mounted under /data:"
   echo
   ls -F /data
   echo
 
-  echo "Adding CRON schedule: $CRON_SCHEDULE"
-  CRONENV="$CRONENV ACCESS_KEY=$ACCESS_KEY"
-  CRONENV="$CRONENV SECRET_KEY=$SECRET_KEY"
-  CRONENV="$CRONENV S3PATH=$S3PATH"
-  CRONENV="$CRONENV S3CMDPARAMS=\"$S3CMDPARAMS\""
-  echo "$CRON_SCHEDULE root $CRONENV bash /run.sh backup" >> $CRONFILE
+  CRONFILE="/etc/cron.d/s3backup"
+  if [ ! -e $CRONFILE ]; then
+    echo "Adding CRON schedule: $CRON_SCHEDULE"
+  
+    CRONENV=""
+    CRONENV="$CRONENV S3PATH=$S3PATH"
+    CRONENV="$CRONENV S3CMDPARAMS=\"$S3CMDPARAMS\""
+  
+    echo "$CRON_SCHEDULE root $CRONENV bash /run.sh backup" >> $CRONFILE
+  fi
 
   echo "Starting CRON scheduler: $(date)"
   cron
@@ -54,7 +60,7 @@ elif [[ $OPTION = "backup" ]]; then
   fi
 
   echo "Executing s3cmd sync $S3CMDPARAMS /data/ $S3PATH..." | tee -a $LOG
-  /usr/local/bin/s3cmd sync $S3CMDPARAMS /data/ $S3PATH 2>&1 | tee -a $LOG
+  /usr/bin/s3cmd sync $S3CMDPARAMS /data/ $S3PATH 2>&1 | tee -a $LOG
   rm -f $LOCKFILE
   echo "Finished sync: $(date)" | tee -a $LOG
 
