@@ -5,10 +5,7 @@ set -o errexit
 set -o pipefail
 
 OPTION="$1"
-ACCESS_KEY=${ACCESS_KEY:?"ACCESS_KEY required"}
-SECRET_KEY=${SECRET_KEY:?"SECRET_KEY required"}
 S3PATH=${S3PATH:?"S3_PATH required"}
-CRON_SCHEDULE=${CRON_SCHEDULE:-0 * * * *}
 S3CMDPARAMS=${S3CMDPARAMS}
 
 S3CFGFILE="/root/.s3cfg"
@@ -22,6 +19,9 @@ if [ ! -e $LOG ]; then
 fi
 
 if [[ $OPTION = "start" ]]; then
+  ACCESS_KEY=${ACCESS_KEY:?"ACCESS_KEY required"}
+  SECRET_KEY=${SECRET_KEY:?"SECRET_KEY required"}
+  CRON_SCHEDULE=${CRON_SCHEDULE:-0 * * * *}
 
   if [ ! -e $S3CFGFILE ]; then
     echo "Configuring S3CMD"
